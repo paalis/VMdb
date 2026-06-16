@@ -1,0 +1,505 @@
+<!-- VM 2026 tippekupong-tracker for Pål André Weisethaunet — BDO Midt-Nord -->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --ink:#0E1B2A;        /* stadium night */
+    --ink2:#0A1521;
+    --panel:#15293D;
+    --panel2:#1B344C;
+    --line:#274A66;
+    --grass:#21A45B;      /* correct / accent */
+    --grass-dim:#16703E;
+    --gold:#F2B705;       /* points / leading */
+    --red:#E2483D;        /* wrong */
+    --red-dim:#7E2620;
+    --mist:#90A8BF;       /* muted */
+    --chalk:#F2F6FA;      /* light text */
+    --amber:#E89B2A;      /* AI suggestion */
+  }
+  *{box-sizing:border-box;}
+  .vm{
+    font-family:'Inter',system-ui,sans-serif;
+    color:var(--chalk);
+    background:
+      radial-gradient(1100px 460px at 78% -8%, rgba(33,164,91,.16), transparent 60%),
+      radial-gradient(900px 420px at 12% 4%, rgba(242,183,5,.10), transparent 55%),
+      var(--ink);
+    border-radius:14px;
+    overflow:hidden;
+    max-width:920px;
+    margin:0 auto;
+    border:1px solid var(--line);
+  }
+
+  /* ---------- Scoreboard header ---------- */
+  .board{padding:22px 22px 18px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(255,255,255,.03), transparent);}
+  .eyebrow{font-family:'Oswald';letter-spacing:.22em;text-transform:uppercase;
+    font-size:11px;color:var(--gold);font-weight:600;}
+  .who{font-family:'Oswald';font-weight:600;font-size:clamp(20px,4.5vw,30px);
+    line-height:1.05;margin:2px 0 14px;letter-spacing:.01em;}
+  .who small{display:block;font-size:12px;letter-spacing:.18em;color:var(--mist);
+    font-weight:400;text-transform:uppercase;margin-top:5px;}
+  .score-wrap{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap;}
+  .bignum{font-family:'Oswald';font-weight:700;line-height:.85;
+    font-size:clamp(56px,15vw,104px);color:var(--chalk);
+    font-variant-numeric:tabular-nums;text-shadow:0 0 30px rgba(242,183,5,.18);}
+  .bignum .of{font-size:.28em;color:var(--mist);font-weight:500;margin-left:8px;letter-spacing:.04em;}
+  .blab{font-family:'Oswald';letter-spacing:.2em;text-transform:uppercase;
+    color:var(--mist);font-size:11px;font-weight:500;margin-bottom:6px;}
+  .progress{flex:1 1 200px;min-width:180px;}
+  .bar{height:10px;border-radius:6px;background:var(--ink2);overflow:hidden;border:1px solid var(--line);}
+  .bar > i{display:block;height:100%;width:0;border-radius:6px;
+    background:linear-gradient(90deg,var(--grass),var(--gold));
+    transition:width .5s cubic-bezier(.2,.7,.2,1);}
+  .barhint{font-size:11px;color:var(--mist);margin-top:6px;}
+
+  .ribbon{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:18px;}
+  .chip{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:10px 12px;}
+  .chip .k{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mist);font-weight:600;}
+  .chip .v{font-family:'Oswald';font-weight:600;font-size:21px;margin-top:3px;font-variant-numeric:tabular-nums;}
+  .chip .v b{color:var(--gold);}
+  .chip .v span{color:var(--mist);font-size:13px;}
+
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
+  button{font-family:'Inter';cursor:pointer;border:none;border-radius:9px;font-weight:600;}
+  .btn{padding:10px 14px;font-size:13px;background:var(--panel2);color:var(--chalk);
+    border:1px solid var(--line);transition:.15s;}
+  .btn:hover{border-color:var(--grass);color:#fff;}
+  .btn.gold{background:linear-gradient(180deg,#FFC926,#E0A800);color:#241a00;border-color:#caa000;}
+  .btn.gold:hover{filter:brightness(1.06);}
+  .btn.ghost{background:transparent;color:var(--mist);}
+  .btn.ghost:hover{color:var(--red);border-color:var(--red);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .status-msg{font-size:12.5px;color:var(--mist);margin-top:10px;min-height:16px;}
+  .status-msg.err{color:var(--red);}
+  .status-msg.ok{color:var(--grass);}
+  .btn.auto.on{background:linear-gradient(180deg,#27c06d,#1a8d4f);color:#04220f;border-color:#1a8d4f;}
+  .btn.auto.on::after{content:" på";}
+  .autonote{font-size:11px;color:var(--mist);margin-top:4px;min-height:14px;}
+  .autonote b{color:var(--gold);font-variant-numeric:tabular-nums;}
+  .pulse{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--grass);
+    margin-right:5px;vertical-align:0;animation:pulse 1.6s infinite;}
+  @keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:9px 13px;border-radius:9px;
+    font-size:12.5px;font-weight:600;border:1px solid var(--line);background:var(--panel2);color:var(--mist);}
+  .pill.on{color:var(--grass);border-color:var(--grass-dim);}
+  .pill.off{color:var(--red);border-color:var(--red-dim);}
+  .live-tag{font-size:9px;letter-spacing:.1em;color:var(--amber);font-weight:700;display:block;margin-top:1px;}
+  .din-tag{font-size:9px;letter-spacing:.1em;color:var(--mist);font-weight:700;display:block;margin-top:1px;}
+
+  /* ---------- Tabs ---------- */
+  .tabs{display:flex;gap:4px;padding:14px 14px 0;flex-wrap:wrap;}
+  .tab{padding:10px 14px;font-family:'Oswald';letter-spacing:.06em;text-transform:uppercase;
+    font-size:13px;font-weight:500;color:var(--mist);background:transparent;border:none;
+    border-bottom:2px solid transparent;border-radius:0;}
+  .tab.active{color:var(--chalk);border-bottom-color:var(--gold);}
+  .tab .n{font-size:11px;color:var(--mist);margin-left:6px;}
+  .tab.active .n{color:var(--gold);}
+
+  .pane{padding:14px 14px 26px;display:none;}
+  .pane.active{display:block;}
+
+  /* ---------- Coupon rows ---------- */
+  .row{display:grid;grid-template-columns:64px 1fr auto auto;align-items:center;gap:12px;
+    padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:var(--panel);
+    margin-bottom:8px;transition:border-color .2s,background .2s;}
+  .row.correct{border-color:var(--grass-dim);background:linear-gradient(90deg,rgba(33,164,91,.12),var(--panel));}
+  .row.wrong{border-color:var(--red-dim);background:linear-gradient(90deg,rgba(226,72,61,.10),var(--panel));}
+  .date{font-size:11px;color:var(--mist);font-variant-numeric:tabular-nums;line-height:1.3;}
+  .date b{display:block;color:var(--chalk);font-weight:600;font-size:12px;}
+  .teams{font-weight:600;font-size:14.5px;line-height:1.25;}
+  .teams .vs{color:var(--mist);font-weight:400;margin:0 6px;}
+  .pick{font-size:10.5px;color:var(--mist);margin-top:3px;letter-spacing:.04em;}
+  .pick b{color:var(--gold);font-family:'Oswald';font-size:13px;letter-spacing:.06em;}
+
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+  .seg button{width:34px;height:34px;background:var(--ink2);color:var(--mist);
+    font-family:'Oswald';font-size:15px;font-weight:600;border-right:1px solid var(--line);}
+  .seg button:last-child{border-right:none;}
+  .seg button.sel{background:var(--panel2);color:#fff;}
+  .seg button.sel.hit{background:var(--grass);color:#04220f;}
+  .seg button.sel.miss{background:var(--red);color:#280a07;}
+  .seg button.ai{box-shadow:inset 0 0 0 2px var(--amber);}
+
+  .stat{font-family:'Oswald';font-weight:600;font-size:15px;width:42px;text-align:center;
+    font-variant-numeric:tabular-nums;}
+  .stat.p{color:var(--grass);}
+  .stat.z{color:var(--red);}
+  .stat.pend{color:var(--mist);font-weight:400;}
+  .aitag{font-size:9px;letter-spacing:.1em;color:var(--amber);font-weight:700;display:block;margin-top:1px;}
+
+  /* ---------- Bonus rows ---------- */
+  .qrow{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center;
+    padding:13px 14px;border:1px solid var(--line);border-radius:11px;background:var(--panel);margin-bottom:8px;}
+  .qrow.correct{border-color:var(--grass-dim);background:linear-gradient(90deg,rgba(33,164,91,.12),var(--panel));}
+  .qrow.wrong{border-color:var(--red-dim);background:linear-gradient(90deg,rgba(226,72,61,.10),var(--panel));}
+  .q{font-size:14px;line-height:1.35;}
+  .q .mine{font-size:11.5px;color:var(--mist);margin-top:4px;}
+  .q .mine b{color:var(--gold);}
+  select,input.num{font-family:'Inter';background:var(--ink2);color:var(--chalk);
+    border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;min-width:120px;}
+  input.num{min-width:64px;width:70px;text-align:center;}
+  select:focus,input.num:focus{outline:none;border-color:var(--gold);}
+  .seg.yn button{width:46px;}
+
+  /* ---------- Live status ---------- */
+  .livegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;}
+  .card{border:1px solid var(--line);border-radius:11px;background:var(--panel);padding:14px;}
+  .card h4{margin:0 0 4px;font-family:'Oswald';font-weight:500;font-size:12px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--mist);}
+  .card .big{font-family:'Oswald';font-weight:600;font-size:19px;line-height:1.2;}
+  .card .sub{font-size:12px;color:var(--mist);margin-top:5px;line-height:1.4;}
+  .card.match-mine{border-color:var(--gold);}
+  .card .vsline{display:flex;justify-content:space-between;gap:8px;font-size:13px;margin-top:2px;}
+  .updnote{font-size:11px;color:var(--mist);margin:2px 0 14px;}
+
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--mist);
+    padding:0 14px 16px;}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px;}
+
+  @media(max-width:560px){
+    .ribbon{grid-template-columns:repeat(2,1fr);}
+    .row{grid-template-columns:54px 1fr;grid-template-areas:"date teams" "blank ctrl";row-gap:9px;}
+    .row .date{grid-area:date;}
+    .row .teams-wrap{grid-area:teams;}
+    .row .ctrl{grid-area:ctrl;display:flex;align-items:center;gap:12px;justify-content:flex-start;}
+    .row .stat{width:auto;text-align:left;}
+    .qrow{grid-template-columns:1fr;gap:10px;}
+  }
+</style>
+
+<div class="vm">
+  <div class="board">
+    <div class="eyebrow">VM 2026 · Tippekonkurranse</div>
+    <div class="who">Pål André Weisethaunet<small>BDO Midt-Nord · Canada · Mexico · USA</small></div>
+
+    <div class="score-wrap">
+      <div><div class="blab">Mine poeng</div>
+        <div class="bignum" id="total">0<span class="of">/ 289</span></div></div>
+      <div class="progress">
+        <div class="bar"><i id="barfill"></i></div>
+        <div class="barhint"><span id="settled">0</span> av 69 spørsmål avgjort</div>
+      </div>
+    </div>
+
+    <div class="ribbon">
+      <div class="chip"><div class="k">Innledende kamper</div><div class="v"><b id="m-pts">0</b><span>/150</span> &nbsp;<span id="m-hit">0/0</span></div></div>
+      <div class="chip"><div class="k">Øvrige spørsmål</div><div class="v"><b id="o-pts">0</b><span>/73</span></div></div>
+      <div class="chip"><div class="k">Ja / Nei</div><div class="v"><b id="j-pts">0</b><span>/66</span></div></div>
+      <div class="chip"><div class="k">Verdensmester</div><div class="v"><b id="w-pts">0</b><span>/10</span></div></div>
+    </div>
+
+    <div class="actions">
+      <span class="pill" id="conn">◌ Kobler til …</span>
+      <button class="btn gold" id="sync-now">↻ Synk nå</button>
+      <button class="btn ghost" id="reset">Nullstill mine svar</button>
+    </div>
+    <div class="status-msg" id="msg"></div>
+    <div class="autonote" id="autonote"></div>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-pane="matches">Kamper <span class="n" id="t-m">0/50</span></button>
+    <button class="tab" data-pane="ovrige">Øvrige <span class="n" id="t-o">0/8</span></button>
+    <button class="tab" data-pane="janei">Ja/Nei <span class="n" id="t-j">0/11</span></button>
+    <button class="tab" data-pane="live">Live-status</button>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--grass)"></i>Tippet riktig</span>
+    <span><i style="background:var(--red)"></i>Tippet feil</span>
+    <span><i style="background:var(--ink2);border:1px solid var(--line)"></i>Ikke avgjort</span>
+    <span><i style="background:var(--amber)"></i>AI-forslag (trykk for å bekrefte/endre)</span>
+  </div>
+
+  <div class="pane active" id="pane-matches"></div>
+  <div class="pane" id="pane-ovrige"></div>
+  <div class="pane" id="pane-janei"></div>
+  <div class="pane" id="pane-live"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ====== FYLL INN DINE EGNE VERDIER ======
+   Finn dem i Supabase: Project Settings -> API.
+   anon-nokkelen er trygg i frontend (kun lese-tilgang via RLS). */
+const SUPABASE_URL  = "https://DITT-PROSJEKT.supabase.co";
+const SUPABASE_ANON = "DIN_ANON_NOKKEL";
+const POLL_MS = 60000;
+/* ======================================== */
+const TEAMS=["Algerie","Argentina","Australia","Belgia","Bosnia-Hercegovina","Brasil","Canada","Colombia","Curacao","DR Kongo","Ecuador","Egypt","Elfenbenskysten","England","Frankrike","Ghana","Haiti","Irak","Iran","Japan","Jordan","Kapp Verde","Kroatia","Marokko","Mexico","Nederland","New Zealand","Norge","Panama","Paraguay","Portugal","Qatar","Saudi-Arabia","Senegal","Skottland","Spania","Sveits","Sverige","Sør-Afrika","Sør-Korea","Tsjekkia","Tunisia","Tyrkia","Tyskland","Uruguay","USA","Usbekistan","Østerrike"];
+const STAGES=["Gruppespill","16-delsfinale","8-delsfinale","Kvartfinale","Semifinale","Finale"];
+
+const MATCHES=[
+["2026-06-11 21:00","Mexico","Sør-Afrika","H"],["2026-06-12 04:00","Sør-Korea","Tsjekkia","H"],
+["2026-06-12 21:00","Canada","Bosnia-Hercegovina","B"],["2026-06-13 03:00","USA","Paraguay","H"],
+["2026-06-14 00:00","Brasil","Marokko","H"],["2026-06-14 03:00","Haiti","Skottland","B"],
+["2026-06-14 22:00","Nederland","Japan","H"],["2026-06-15 01:00","Elfenbenskysten","Ecuador","U"],
+["2026-06-15 04:00","Sverige","Tunisia","H"],["2026-06-15 21:00","Belgia","Egypt","H"],
+["2026-06-16 03:00","Iran","New Zealand","B"],["2026-06-16 21:00","Frankrike","Senegal","H"],
+["2026-06-17 00:00","Irak","Norge","B"],["2026-06-17 03:00","Argentina","Algerie","H"],
+["2026-06-17 22:00","England","Kroatia","H"],["2026-06-18 01:00","Ghana","Panama","H"],
+["2026-06-18 04:00","Usbekistan","Colombia","B"],["2026-06-18 21:00","Sveits","Bosnia-Hercegovina","H"],
+["2026-06-19 03:00","Mexico","Sør-Korea","H"],["2026-06-19 21:00","USA","Australia","H"],
+["2026-06-20 00:00","Skottland","Marokko","U"],["2026-06-20 05:00","Tyrkia","Paraguay","H"],
+["2026-06-20 19:00","Nederland","Sverige","H"],["2026-06-20 22:00","Tyskland","Elfenbenskysten","H"],
+["2026-06-21 02:00","Ecuador","Curacao","H"],["2026-06-21 18:00","Spania","Saudi-Arabia","H"],
+["2026-06-21 21:00","Belgia","Iran","H"],["2026-06-22 03:00","New Zealand","Egypt","B"],
+["2026-06-22 19:00","Argentina","Østerrike","H"],["2026-06-22 23:00","Frankrike","Irak","H"],
+["2026-06-23 02:00","Norge","Senegal","H"],["2026-06-23 05:00","Jordan","Algerie","B"],
+["2026-06-23 22:00","England","Ghana","H"],["2026-06-24 04:00","Colombia","DR Kongo","H"],
+["2026-06-24 21:00","Bosnia-Hercegovina","Qatar","H"],["2026-06-24 21:00","Sveits","Canada","H"],
+["2026-06-25 00:00","Skottland","Brasil","B"],["2026-06-25 03:00","Tsjekkia","Mexico","B"],
+["2026-06-25 22:00","Curacao","Elfenbenskysten","B"],["2026-06-25 22:00","Ecuador","Tyskland","B"],
+["2026-06-26 01:00","Japan","Sverige","U"],["2026-06-26 04:00","Tyrkia","USA","U"],
+["2026-06-26 21:00","Norge","Frankrike","B"],["2026-06-26 21:00","Senegal","Irak","H"],
+["2026-06-27 02:00","Kapp Verde","Saudi-Arabia","B"],["2026-06-27 02:00","Uruguay","Spania","B"],
+["2026-06-27 05:00","Egypt","Iran","H"],["2026-06-27 23:00","Kroatia","Ghana","H"],
+["2026-06-28 01:30","Colombia","Portugal","B"],["2026-06-28 01:30","DR Kongo","Usbekistan","H"]
+].map((m,i)=>({i,date:m[0],l1:m[1],l2:m[2],pick:m[3]}));
+
+const OVRIGE=[
+{i:0,q:"Verdensmester",ans:"Frankrike",type:"team",pts:10},
+{i:1,q:"Tapende finalist",ans:"Spania",type:"team",pts:9},
+{i:2,q:"Vinner bronsefinale",ans:"Brasil",type:"team",pts:9},
+{i:3,q:"Tapende bronsefinalist",ans:"England",type:"team",pts:9},
+{i:4,q:"Hvilket land kommer toppscoreren fra?",ans:"Frankrike",type:"team",pts:9},
+{i:5,q:"Hvor mange mål scorer toppscoreren?",ans:"8",type:"num",pts:9},
+{i:6,q:"Hvilket land scorer mest mål? (straffekonk. ikke medregnet)",ans:"Spania",type:"team",pts:9},
+{i:7,q:"Hvor langt kommer Norge?",ans:"Kvartfinale",type:"stage",pts:9},
+];
+
+const JANEI=[
+{i:0,q:"Kommer et lag fra Afrika til kvartfinalen?",ans:"JA"},
+{i:1,q:"Kommer verdensmesteren fra Europa?",ans:"JA"},
+{i:2,q:"Scorer Haaland (NOR) flere mål enn Vinicius jr. (BRA)?",ans:"JA"},
+{i:3,q:"Scorer Mbappé (FRA) flere mål enn Kane (ENG)?",ans:"JA"},
+{i:4,q:"Scorer Messi (ARG) flere mål enn Ronaldo (POR)?",ans:"JA"},
+{i:5,q:"Mer enn 2 lag utenfor Europa i kvartfinalene?",ans:"JA"},
+{i:6,q:"Kommer minst én vertsnasjon lenger enn 16-delsfinale?",ans:"JA"},
+{i:7,q:"Scorer Kapp Verde, Haiti og Curacao til sammen mer enn 4 mål?",ans:"JA"},
+{i:8,q:"Scorer Norge flere mål enn Sverige?",ans:"JA"},
+{i:9,q:"Scorer Frankrike flere mål enn Spania?",ans:"NEI"},
+{i:10,q:"Scorer Argentina flere mål enn Brasil?",ans:"NEI"},
+];
+
+// Persisted locally (your inputs): manual overrides + bonus answers
+let S={mManual:{},ov:{},jn:{}};
+// Runtime (rebuilt from DB + manual each sync)
+let R={res:{},live:{},din:{}};
+
+const $=id=>document.getElementById(id);
+const fmtDate=d=>{const[da,t]=d.split(" ");const[,mo,day]=da.split("-");return{top:`${day}.${mo}.`,bot:t};};
+const isPast=d=>new Date(d.replace(" ","T"))<new Date();
+
+/* ---------- Rendering ---------- */
+function renderMatches(){
+  const el=$("pane-matches");el.innerHTML="";
+  MATCHES.forEach(m=>{
+    const res=R.res[m.i]||null, live=R.live[m.i], din=R.din[m.i];
+    const correct=res&&res===m.pick, wrong=res&&res!==m.pick;
+    const dt=fmtDate(m.date);
+    const tag=din?'<span class="din-tag">DIN</span>':live?'<span class="live-tag">● LIVE</span>':"";
+    const row=document.createElement("div");
+    row.className="row"+(correct?" correct":wrong?" wrong":"");
+    row.innerHTML=`
+      <div class="date">${dt.top}<b>kl ${dt.bot}</b></div>
+      <div class="teams-wrap">
+        <div class="teams">${m.l1}<span class="vs">–</span>${m.l2}</div>
+        <div class="pick">Din tipp: <b>${m.pick}</b></div>
+      </div>
+      <div class="ctrl">
+        <div class="seg" data-i="${m.i}">
+          ${["H","U","B"].map(o=>{
+            let c="";if(res===o){c=correct?"sel hit":wrong?"sel miss":"sel";if(live&&!din)c+=" ai";}
+            return `<button data-o="${o}" class="${c}">${o}</button>`;}).join("")}
+        </div>
+        <div class="stat ${correct?"p":wrong?"z":"pend"}">
+          ${correct?"+3":wrong?"0":"—"}${tag}
+        </div>
+      </div>`;
+    el.appendChild(row);
+  });
+  el.querySelectorAll(".seg").forEach(seg=>{
+    seg.querySelectorAll("button").forEach(b=>b.onclick=()=>{
+      const i=+seg.dataset.i,o=b.dataset.o;
+      if(S.mManual[i]===o){delete S.mManual[i];}else{S.mManual[i]=o;}
+      save();rebuild();
+    });
+  });
+}
+
+function renderOvrige(){
+  const el=$("pane-ovrige");el.innerHTML="";
+  OVRIGE.forEach(q=>{
+    const f=S.ov[q.i]??"";
+    const ok=f!==""&&String(f).trim().toLowerCase()===q.ans.toLowerCase();
+    const bad=f!==""&&!ok;
+    const row=document.createElement("div");
+    row.className="qrow"+(ok?" correct":bad?" wrong":"");
+    let input;
+    if(q.type==="num"){
+      input=`<input class="num" type="number" min="0" data-i="${q.i}" value="${f}" placeholder="–">`;
+    }else{
+      const list=q.type==="stage"?STAGES:TEAMS;
+      input=`<select data-i="${q.i}"><option value="">– fasit –</option>${
+        list.map(t=>`<option ${t===f?"selected":""}>${t}</option>`).join("")}</select>`;
+    }
+    row.innerHTML=`
+      <div class="q">${q.q}<div class="mine">Din tipp: <b>${q.ans}</b> · ${q.pts} poeng</div></div>
+      ${input}
+      <div class="stat ${ok?"p":bad?"z":"pend"}">${ok?"+"+q.pts:bad?"0":"—"}</div>`;
+    el.appendChild(row);
+  });
+  el.querySelectorAll("select,input.num").forEach(inp=>{
+    inp.onchange=()=>{const i=+inp.dataset.i;const v=inp.value.trim();
+      if(v==="")delete S.ov[i];else S.ov[i]=v;save();renderOvrige();updateTotals();};
+  });
+}
+
+function renderJanei(){
+  const el=$("pane-janei");el.innerHTML="";
+  JANEI.forEach(q=>{
+    const f=S.jn[q.i]||null;
+    const ok=f&&f===q.ans, bad=f&&f!==q.ans;
+    const row=document.createElement("div");
+    row.className="qrow"+(ok?" correct":bad?" wrong":"");
+    row.innerHTML=`
+      <div class="q">${q.q}<div class="mine">Din tipp: <b>${q.ans}</b> · 6 poeng</div></div>
+      <div class="seg yn" data-i="${q.i}">
+        ${["JA","NEI"].map(o=>{let c="";if(f===o)c=ok?"sel hit":"sel miss";
+          return `<button data-o="${o}" class="${c}">${o}</button>`;}).join("")}
+      </div>
+      <div class="stat ${ok?"p":bad?"z":"pend"}">${ok?"+6":bad?"0":"—"}</div>`;
+    el.appendChild(row);
+  });
+  el.querySelectorAll(".seg.yn").forEach(seg=>{
+    seg.querySelectorAll("button").forEach(b=>b.onclick=()=>{
+      const i=+seg.dataset.i,o=b.dataset.o;
+      if(S.jn[i]===o)delete S.jn[i];else S.jn[i]=o;
+      save();renderJanei();updateTotals();
+    });
+  });
+}
+
+function renderLive(){
+  const el=$("pane-live");
+  const L=S.live;
+  const note=L?`Sist oppdatert: ${L.updated}`:`Startverdier per 15. juni 2026. Trykk «Oppdater live-status (AI)» for ferske tall.`;
+  // defaults (verified snapshot 15 June 2026)
+  const d=L||{
+    topscorer:"Balogun (USA), Havertz (TYS), Ayari (SWE)",topgoals:"2 mål (delt)",
+    topcountry:"Tyskland (7 mål) – uoffisielt tidlig",norway:"Spiller gruppespill",
+    duels:[["Haaland (NOR)","Vinicius jr. (BRA)","– / –"],["Mbappé (FRA)","Kane (ENG)","– / –"],
+      ["Messi (ARG)","Ronaldo (POR)","– / –"],["Norge","Sverige","– / –"],
+      ["Frankrike","Spania","– / –"],["Argentina","Brasil","– / –"]]
+  };
+  el.innerHTML=`
+    <p class="updnote">${note}</p>
+    <div class="livegrid">
+      <div class="card match-mine"><h4>Toppscorer akkurat nå</h4>
+        <div class="big">${d.topscorer}</div>
+        <div class="sub">${d.topgoals} · din tipp: <b style="color:var(--gold)">Frankrike</b>, 8 mål</div></div>
+      <div class="card match-mine"><h4>Land med flest mål</h4>
+        <div class="big">${d.topcountry}</div>
+        <div class="sub">din tipp: <b style="color:var(--gold)">Spania</b></div></div>
+      <div class="card match-mine"><h4>Norge</h4>
+        <div class="big">${d.norway}</div>
+        <div class="sub">din tipp: <b style="color:var(--gold)">Kvartfinale</b></div></div>
+    </div>
+    <h4 style="font-family:'Oswald';font-weight:500;letter-spacing:.12em;color:var(--mist);
+      text-transform:uppercase;font-size:12px;margin:20px 0 8px">Måldueller (mål for / mot)</h4>
+    <div class="livegrid">
+      ${d.duels.map(x=>`<div class="card"><div class="vsline"><span>${x[0]}</span><b>${x[2].split("/")[0]||"–"}</b></div>
+        <div class="vsline" style="color:var(--mist)"><span>${x[1]}</span><b>${x[2].split("/")[1]||"–"}</b></div></div>`).join("")}
+    </div>`;
+}
+
+/* ---------- Totals ---------- */
+function updateTotals(){
+  let mp=0,mhit=0,mset=0;
+  MATCHES.forEach(m=>{const r=R.res[m.i];if(r){mset++;if(r===m.pick){mp+=3;mhit++;}}});
+  let op=0,oset=0,wp=0;
+  OVRIGE.forEach(q=>{const f=S.ov[q.i];if(f!==undefined&&f!==""){oset++;
+    if(String(f).trim().toLowerCase()===q.ans.toLowerCase()){op+=q.pts;if(q.i===0)wp=10;}}});
+  let jp=0,jset=0;
+  JANEI.forEach(q=>{const f=S.jn[q.i];if(f){jset++;if(f===q.ans)jp+=6;}});
+
+  const total=mp+op+jp;
+  $("total").innerHTML=total+'<span class="of">/ 289</span>';
+  $("barfill").style.width=(total/289*100)+"%";
+  $("m-pts").textContent=mp; $("m-hit").textContent=mhit+"/"+mset;
+  $("o-pts").textContent=op; $("j-pts").textContent=jp; $("w-pts").textContent=wp;
+  $("settled").textContent=mset+oset+jset;
+  $("t-m").textContent=mset+"/50"; $("t-o").textContent=oset+"/8"; $("t-j").textContent=jset+"/11";
+}
+
+/* ---------- Local persistence (your inputs) ---------- */
+function save(){try{localStorage.setItem("vm2026_state",JSON.stringify(S));}catch(e){}}
+function load(){try{const r=localStorage.getItem("vm2026_state");if(r)S=Object.assign(S,JSON.parse(r));}catch(e){}}
+
+/* ---------- Supabase: read live fasit ---------- */
+const FINISHED=["FT","AET","PEN","PST","CANC","ABD","AWD","WO"];
+let sb=null,lastRows=[];
+try{ if(window.supabase && !SUPABASE_URL.includes("DITT-PROSJEKT"))
+  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON); }catch(e){}
+
+function msg(t,cls=""){const m=$("msg");m.textContent=t;m.className="status-msg "+cls;}
+function setConn(state,label){const p=$("conn");p.className="pill "+state;p.textContent=label;}
+
+/* Merge DB results with your manual overrides; manual always wins */
+function rebuild(rows){
+  if(rows) lastRows=rows;
+  R={res:{},live:{},din:{}};
+  lastRows.forEach(r=>{
+    if(r.status==="NS"||r.outcome==null) return;
+    R.res[r.pick_id]=r.outcome;
+    R.live[r.pick_id]=!FINISHED.includes(r.status);
+  });
+  Object.keys(S.mManual).forEach(k=>{const i=+k;R.res[i]=S.mManual[i];R.din[i]=true;R.live[i]=false;});
+  renderMatches();updateTotals();
+}
+
+async function sync(loud){
+  if(!sb){setConn("off","✕ Mangler oppsett");
+    if(loud)msg("Fyll inn SUPABASE_URL og SUPABASE_ANON øverst i index.html.","err");return;}
+  if(loud)msg("Henter fasit fra basen …");
+  try{
+    const {data,error}=await sb.from("results").select("pick_id,outcome,status,updated_at");
+    if(error)throw error;
+    rebuild(data);
+    const liveN=Object.values(R.live).filter(Boolean).length;
+    setConn("on", liveN?`● ${liveN} kamp(er) spilles nå`:"● Tilkoblet");
+    const now=new Date().toLocaleTimeString("no-NO",{hour:"2-digit",minute:"2-digit"});
+    $("autonote").innerHTML=`<span class="pulse"></span>Synker automatisk hvert minutt · sist lest kl <b>${now}</b>`;
+    if(loud)msg("Oppdatert.","ok");
+  }catch(e){setConn("off","✕ Frakoblet");
+    if(loud)msg("Klarte ikke lese fra basen. Sjekk URL/nøkkel og at tabellen finnes.","err");}
+}
+$("sync-now").onclick=()=>sync(true);
+
+$("reset").onclick=()=>{
+  if(!confirm("Nullstille dine egne svar (bonus + manuelle overstyringer)? Live-resultatene fra basen beholdes."))return;
+  S={mManual:{},ov:{},jn:{}};save();
+  rebuild();renderOvrige();renderJanei();
+  msg("Dine svar er nullstilt.","ok");
+};
+
+/* ---------- Tabs ---------- */
+$("tabs").querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+  $("tabs").querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll(".pane").forEach(p=>p.classList.remove("active"));
+  t.classList.add("active");$("pane-"+t.dataset.pane).classList.add("active");
+});
+
+/* ---------- Init ---------- */
+load();
+renderOvrige();renderJanei();renderLive();
+rebuild();           // render matches with whatever we have (empty until first sync)
+sync(false);         // first read from Supabase
+setInterval(()=>sync(false), POLL_MS);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)sync(false);});
+</script>

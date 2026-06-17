@@ -1,16 +1,15 @@
-// Henter faktiske VM-2026-resultater fra API-Football og skriver dem til Supabase.
+// Henter faktiske VM-2026-resultater fra football-data.org og skriver dem til Supabase.
 // Kjøres av GitHub Actions på timeplan (se .github/workflows/sync.yml).
-// Ett HTTP-kall per kjøring (alle 104 kamper), så det holder seg godt under gratisgrensen.
 
 import { createClient } from "@supabase/supabase-js";
 
-const { APISPORTS_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
-if (!APISPORTS_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error("Mangler env: APISPORTS_KEY / SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY");
+const TOKEN = process.env.FOOTBALL_DATA_TOKEN || process.env.APISPORTS_KEY;
+const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
+if (!TOKEN || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error("Mangler env: FOOTBALL_DATA_TOKEN (eller APISPORTS_KEY) / SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY");
   process.exit(1);
 }
 
-// pick_id = indeks. [LAG 1 (hjemme), LAG 2 (borte)] — samme rekkefølge som i index.html.
 const PICKS = [
   ["Mexico","Sør-Afrika"],["Sør-Korea","Tsjekkia"],["Canada","Bosnia-Hercegovina"],
   ["USA","Paraguay"],["Brasil","Marokko"],["Haiti","Skottland"],["Nederland","Japan"],
@@ -27,8 +26,6 @@ const PICKS = [
   ["Egypt","Iran"],["Kroatia","Ghana"],["Colombia","Portugal"],["DR Kongo","Usbekistan"],
 ];
 
-// Norsk -> mulige engelske navn i API-Football. Sjekk Actions-loggen for "ikke matchet"
-// og legg til/juster aliaser her hvis et lag ikke treffer.
 const TEAM_MAP = {
   "Algerie":["Algeria"], "Argentina":["Argentina"], "Australia":["Australia"],
   "Belgia":["Belgium"], "Bosnia-Hercegovina":["Bosnia and Herzegovina","Bosnia & Herzegovina","Bosnia"],
@@ -53,36 +50,42 @@ const norm = s => (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
 const aliasSet = no => new Set((TEAM_MAP[no] || [no]).map(norm));
 const sameTeam = (no, fixName) => aliasSet(no).has(norm(fixName));
 
-async function main(){
-  const url = "https://v3.football.api-sports.io/fixtures?league=1&season=2026";
-  const r = await fetch(url, { headers: { "x-apisports-key": APISPORTS_KEY } });
-  const json = await r.json();
+function mapStatus(s){
+  if (s === "FINISHED" || s === "AWARDED") return "FT";
+  if (s === "IN_PLAY"  || s === "PAUSED")  return "LIVE";
+  return "NS";
+}
 
-  if (json.errors && (Array.isArray(json.errors) ? json.errors.length : Object.keys(json.errors).length)) {
-    console.error("API-Football feil:", JSON.stringify(json.errors));
+async function main(){
+  const res = await fetch("https://api.football-data.org/v4/competitions/WC/matches", {
+    headers: { "X-Auth-Token": TOKEN }
+  });
+  if (!res.ok){
+    const t = await res.text();
+    console.error(`football-data.org feil (HTTP ${res.status}): ${t}`);
     process.exit(1);
   }
-  const fixtures = json.response || [];
-  console.log(`Hentet ${fixtures.length} kamper fra API-Football.`);
+  const json = await res.json();
+  const fixtures = json.matches || [];
+  console.log(`Hentet ${fixtures.length} kamper fra football-data.org.`);
 
   const rows = [], misses = [];
   for (let id = 0; id < PICKS.length; id++) {
     const [home, away] = PICKS[id];
     let f = null, swapped = false;
     for (const x of fixtures) {
-      const fh = x.teams.home.name, fa = x.teams.away.name;
+      const fh = x.homeTeam?.name, fa = x.awayTeam?.name;
       if (sameTeam(home, fh) && sameTeam(away, fa)) { f = x; break; }
       if (sameTeam(home, fa) && sameTeam(away, fh)) { f = x; swapped = true; break; }
     }
-    if (!f) { misses.push(`#${id} ${home}–${away}`); continue; }
+    if (!f) { misses.push(`#${id} ${home}-${away}`); continue; }
 
-    const status = f.fixture.status.short;
-    let gh = f.goals.home, ga = f.goals.away;
-    if (gh == null || ga == null) {
-      rows.push({ pick_id: id, goals_home: null, goals_away: null, outcome: null, status });
+    const status = mapStatus(f.status);
+    let gh = f.score?.fullTime?.home, ga = f.score?.fullTime?.away;
+    if (gh == null || ga == null || status === "NS") {
+      rows.push({ pick_id: id, goals_home: null, goals_away: null, outcome: null, status: "NS" });
       continue;
     }
-    // Orienter mot din rekkefølge (LAG 1 = hjemme)
     const hg = swapped ? ga : gh;
     const ag = swapped ? gh : ga;
     const outcome = hg > ag ? "H" : hg < ag ? "B" : "U";
@@ -96,7 +99,7 @@ async function main(){
 
   const played = rows.filter(x => x.outcome).length;
   console.log(`Skrev ${rows.length} rader (${played} med resultat).`);
-  if (misses.length) console.log("Ikke matchet (juster TEAM_MAP eller ikke spilt ennå):\n  " + misses.join("\n  "));
+  if (misses.length) console.log("Ikke matchet:\n  " + misses.join("\n  "));
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
